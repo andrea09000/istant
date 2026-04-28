@@ -1,0 +1,66 @@
+rules_version = '2';
+// Dev rules for admin.html: VERY permissive for posts.
+// WARNING: This makes posts (and reactions/views) readable & deletable without auth.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isSelf(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function postDoc(postId) {
+      return get(/databases/$(database)/documents/posts/$(postId));
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSelf(uid);
+    }
+
+    match /usernames/{uname} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /friendships/{id} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.users;
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.users;
+      allow update, delete: if isSignedIn() && request.auth.uid in resource.data.users;
+    }
+
+    match /users/{uid}/closeFriends/{f} {
+      allow read, write: if isSelf(uid);
+    }
+
+    match /posts/{postId} {
+      // Admin page needs to list all posts without auth.
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      // Admin page needs to delete posts without auth.
+      allow update: if isSignedIn() && resource.data.authorUid == request.auth.uid;
+      allow delete: if true;
+    }
+
+    match /posts/{postId}/reactions/{rid} {
+      // Admin page needs to delete reactions without auth during post cleanup.
+      allow read: if true;
+      allow create, update: if isSelf(rid)
+        || (isSignedIn() && request.auth.uid == postDoc(postId).data.authorUid);
+      allow delete: if true;
+    }
+
+    match /posts/{postId}/views/{vid} {
+      // Admin page needs to delete views without auth during post cleanup.
+      allow read: if true;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == vid
+        && request.auth.uid in postDoc(postId).data.audienceUids;
+      allow delete: if true;
+    }
+
+    // Abuse reports (write-only for users; readable only by the reporter for now)
+    match /reports/{rid} {
+      allow create: if isSignedIn()
+        && request.resource.data.reporterUid == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.reporterUid == request.auth.uid;
+    }
+  }
+}

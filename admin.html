@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ISTANT Admin</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0d10;
+        --card: rgba(255, 255, 255, 0.06);
+        --border: rgba(255, 255, 255, 0.10);
+        --fg: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.55);
+        --accent: #7c3aed;
+        --danger: #ff3b30;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 800px at 10% -10%, rgba(124,58,237,0.25), transparent 60%),
+          radial-gradient(900px 600px at 100% 0%, rgba(0,200,255,0.12), transparent 55%),
+          var(--bg);
+        color: var(--fg);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(10px);
+        background: rgba(11,13,16,0.6);
+        border-bottom: 1px solid var(--border);
+      }
+      .wrap { max-width: 1100px; margin: 0 auto; padding: 18px 16px; }
+      h1 { margin: 0; letter-spacing: -0.02em; font-size: 26px; }
+      .sub { margin-top: 6px; color: var(--muted); font-size: 13px; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+      input {
+        flex: 1;
+        min-width: 220px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        border-radius: 12px;
+        color: var(--fg);
+        outline: none;
+      }
+      button {
+        background: rgba(124,58,237,0.20);
+        border: 1px solid rgba(124,58,237,0.40);
+        color: var(--fg);
+        padding: 10px 12px;
+        border-radius: 999px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid var(--border);
+        font-weight: 700;
+      }
+      button.danger {
+        background: rgba(255,59,48,0.18);
+        border: 1px solid rgba(255,59,48,0.32);
+      }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+      main { padding: 18px 0 60px; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        overflow: hidden;
+      }
+      .img {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        background: rgba(255,255,255,0.04);
+        display: grid;
+        place-items: center;
+        border-bottom: 1px solid var(--border);
+      }
+      .img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .pad { padding: 12px; display: grid; gap: 8px; }
+      .meta { color: var(--muted); font-size: 12px; line-height: 1.35; }
+      .pill {
+        display: inline-flex; gap: 8px; align-items: center;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid var(--border);
+        padding: 6px 10px; border-radius: 999px; font-size: 12px; color: var(--muted);
+      }
+      .warn {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,59,48,0.25);
+        background: rgba(255,59,48,0.08);
+        color: rgba(255,255,255,0.78);
+        font-size: 12px;
+      }
+      .footer { color: var(--muted); font-size: 12px; margin-top: 18px; }
+      code { color: rgba(255,255,255,0.85); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <h1>ISTANT Admin</h1>
+        <div class="sub">
+          Pagina admin <b>senza password</b>. https://console.firebase.google.com/u/1/project/jonny-4d656/storage/jonny-4d656.firebasestorage.app/files 
+          jonny-4d656
+        </div>
+        <div class="row">
+          <input id="projectId" placeholder="Firebase projectId (es: my-app-123)" />
+          <input id="storageBucket" placeholder="Storage bucket (es: my-app-123.appspot.com)" />
+          <button id="connectBtn">Connetti</button>
+          <button id="refreshBtn" class="secondary" disabled>Aggiorna</button>
+        </div>
+        <div class="row">
+          <span class="pill" id="statusPill">Non connesso</span>
+          <span class="pill" id="countPill">Post: 0</span>
+        </div>
+        <div class="warn">
+          Nota: questa pagina funziona solo se le <b>Firestore/Storage Rules</b> permettono lettura/cancellazione dal browser.
+          In produzione è meglio proteggere con login o Cloud Functions.
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap">
+        <div id="grid" class="grid"></div>
+        <div class="footer">
+          Collezione Firestore: <code>posts</code>. Sotto-collezioni: <code>reactions</code>, <code>views</code>.
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        query,
+        limit,
+        getDocs,
+        doc,
+        deleteDoc,
+      } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+      import {
+        getStorage,
+        ref as storageRef,
+        deleteObject,
+      } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
+
+      const $ = (id) => document.getElementById(id);
+      const grid = $("grid");
+      const statusPill = $("statusPill");
+      const countPill = $("countPill");
+      const connectBtn = $("connectBtn");
+      const refreshBtn = $("refreshBtn");
+      const projectIdInput = $("projectId");
+      const storageBucketInput = $("storageBucket");
+
+      let app = null;
+      let db = null;
+      let storage = null;
+      let busy = false;
+
+      // Optional: hardcode defaults here (then the page never asks again).
+      // Example:
+      // const DEFAULT_PROJECT_ID = "my-app-123";
+      // const DEFAULT_STORAGE_BUCKET = "my-app-123.appspot.com";
+      const DEFAULT_PROJECT_ID = "";
+      const DEFAULT_STORAGE_BUCKET = "";
+
+      function inferProjectIdFromHost() {
+        const host = String(location.hostname || "");
+        // Firebase Hosting patterns: <site>.web.app / <site>.firebaseapp.com
+        const m = host.match(/^([a-z0-9-]+)\.(web\.app|firebaseapp\.com)$/i);
+        return m ? m[1] : "";
+      }
+
+      function loadSavedConfig() {
+        const qs = new URLSearchParams(location.search);
+        const qsProjectId = qs.get("projectId") || "";
+        const qsBucket = qs.get("storageBucket") || "";
+
+        const savedProjectId = localStorage.getItem("instant_admin_projectId") || "";
+        const savedBucket = localStorage.getItem("instant_admin_storageBucket") || "";
+
+        const inferredProjectId = inferProjectIdFromHost();
+
+        const projectId =
+          qsProjectId || DEFAULT_PROJECT_ID || savedProjectId || inferredProjectId;
+        const storageBucket =
+          qsBucket || DEFAULT_STORAGE_BUCKET || savedBucket || (projectId ? `${projectId}.appspot.com` : "");
+
+        projectIdInput.value = projectId;
+        storageBucketInput.value = storageBucket;
+        return { projectId, storageBucket };
+      }
+
+      function saveConfig(projectId, storageBucket) {
+        localStorage.setItem("instant_admin_projectId", projectId);
+        localStorage.setItem("instant_admin_storageBucket", storageBucket);
+      }
+
+      function setBusy(v) {
+        busy = v;
+        connectBtn.disabled = busy;
+        refreshBtn.disabled = busy || !db;
+        statusPill.textContent = busy ? "Operazione…" : (db ? "Connesso" : "Non connesso");
+        statusPill.style.borderColor = db ? "rgba(124,58,237,0.40)" : "rgba(255,255,255,0.10)";
+        statusPill.style.background = db ? "rgba(124,58,237,0.20)" : "rgba(255,255,255,0.06)";
+      }
+
+      function fmtDate(createdAt) {
+        if (!createdAt) return "";
+        if (typeof createdAt === "string") return new Date(createdAt).toLocaleString();
+        if (createdAt && typeof createdAt.toDate === "function") return createdAt.toDate().toLocaleString();
+        if (createdAt && typeof createdAt.seconds === "number") return new Date(createdAt.seconds * 1000).toLocaleString();
+        return "";
+      }
+
+      function escapeHtml(s) {
+        return String(s ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      async function deletePostDeep(postId) {
+        const reactionsSn = await getDocs(collection(db, "posts", postId, "reactions"));
+        const viewsSn = await getDocs(collection(db, "posts", postId, "views"));
+        await Promise.all([
+          ...reactionsSn.docs.map((d) => deleteDoc(d.ref)),
+          ...viewsSn.docs.map((d) => deleteDoc(d.ref)),
+        ]);
+        await deleteDoc(doc(db, "posts", postId));
+      }
+
+      async function deleteImageByUrl(url) {
+        // Firebase web SDK supports delete via ref(storage, full download URL)
+        await deleteObject(storageRef(storage, url));
+      }
+
+      async function loadPosts() {
+        if (!db) return;
+        setBusy(true);
+        try {
+          const sn = await getDocs(query(collection(db, "posts"), limit(500)));
+          const items = sn.docs.map((d) => ({ id: d.id, ...d.data() }));
+          items.sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
+          countPill.textContent = `Post: ${items.length}`;
+          render(items);
+        } catch (e) {
+          console.error(e);
+          alert(e?.message ?? "Errore caricamento");
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      function render(items) {
+        grid.innerHTML = "";
+        for (const p of items) {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const img = document.createElement("div");
+          img.className = "img";
+          if (p.photoUrl) {
+            const el = document.createElement("img");
+            el.src = p.photoUrl;
+            el.alt = "photo";
+            img.appendChild(el);
+          } else {
+            img.textContent = "Senza foto";
+          }
+
+          const pad = document.createElement("div");
+          pad.className = "pad";
+
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.innerHTML = `
+            <div><b>id</b>: <code>${escapeHtml(p.id)}</code></div>
+            <div><b>authorUid</b>: <code>${escapeHtml(p.authorUid)}</code></div>
+            <div><b>createdAt</b>: ${escapeHtml(fmtDate(p.createdAt))}</div>
+          `;
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "danger";
+          delBtn.textContent = "Elimina foto + post";
+          delBtn.onclick = async () => {
+            if (busy) return;
+            const ok = confirm("Vuoi eliminare questa foto e tutto il post? (post + reactions + views)");
+            if (!ok) return;
+            setBusy(true);
+            try {
+              if (p.photoUrl) {
+                try { await deleteImageByUrl(p.photoUrl); } catch {}
+              }
+              await deletePostDeep(p.id);
+              await loadPosts();
+            } catch (e) {
+              console.error(e);
+              alert(e?.message ?? "Impossibile eliminare");
+            } finally {
+              setBusy(false);
+            }
+          };
+
+          pad.appendChild(meta);
+          pad.appendChild(delBtn);
+          card.appendChild(img);
+          card.appendChild(pad);
+          grid.appendChild(card);
+        }
+      }
+
+      connectBtn.onclick = async () => {
+        const projectId = projectIdInput.value.trim();
+        const storageBucket = storageBucketInput.value.trim();
+        if (!projectId) {
+          alert("Inserisci projectId");
+          return;
+        }
+        setBusy(true);
+        try {
+          saveConfig(projectId, storageBucket || `${projectId}.appspot.com`);
+          const cfg = {
+            apiKey: "not-needed-for-public-data",
+            authDomain: `${projectId}.firebaseapp.com`,
+            projectId,
+            storageBucket: storageBucket || `${projectId}.appspot.com`,
+          };
+          app = initializeApp(cfg);
+          db = getFirestore(app);
+          storage = getStorage(app);
+          refreshBtn.disabled = false;
+          await loadPosts();
+        } catch (e) {
+          console.error(e);
+          alert(e?.message ?? "Errore connessione");
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      refreshBtn.onclick = () => void loadPosts();
+
+      // Autofill + auto-connect if config is available.
+      const initial = loadSavedConfig();
+      setBusy(false);
+      if (initial.projectId) {
+        // auto connect on open
+        connectBtn.click();
+      }
+    </script>
+  </body>
+</html>
+
