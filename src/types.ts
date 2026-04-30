@@ -43,6 +43,11 @@ export type FriendshipDoc = {
   acceptedAt?: Timestamp;
 };
 
+export type FriendInviteDoc = {
+  ownerUid: string;
+  createdAt: string;
+};
+
 export type EmojiReaction = '❤️' | '😂' | '😮' | '🔥' | '👀' | '💀';
 
 export const EMOJIS: EmojiReaction[] = ['❤️', '😂', '😮', '🔥', '👀', '💀'];

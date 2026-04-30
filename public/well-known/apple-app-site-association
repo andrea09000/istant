@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "PX49GHL64Y.com.istant.app",
+        "paths": [
+          "/invite/*"
+        ]
+      }
+    ]
+  }
+}
+

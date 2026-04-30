@@ -55,6 +55,15 @@ eas build --profile development --platform all
 
 ## Note
 
+- Link invito “cliccabile” (WhatsApp/IG/iMessage) richiede un dominio HTTPS con **Universal Links** (iOS) + **App Links** (Android).
+  - Imposta `EXPO_PUBLIC_APP_ORIGIN=https://istantapp.it` nel `.env` per generare link HTTPS.
+  - Pubblica sul tuo dominio questi file (status 200, no redirect):
+    - `https://istantapp.it/.well-known/apple-app-site-association`
+    - `https://istantapp.it/.well-known/assetlinks.json`
+  - Se usi **Netlify**: nel repo ci sono già `public/.well-known/*` + `netlify.toml` (publish = `public`). Dopo il deploy verifica che gli URL sopra rispondano 200.
+  - Android: in `public/.well-known/assetlinks.json` sostituisci `REPLACE_WITH_YOUR_SHA256_CERT_FINGERPRINT` con la SHA-256 del certificato (debug/release) usato per firmare l’app installata.
+  - In `app.json` aggiorna `ios.associatedDomains` e `android.intentFilters` se il dominio non è `istantapp.it`.
+
 - In **Firebase 12** il sample di persistenza Auth con `getReactNativePersistence` non è usato: la sessione può dipendere dal default di `getAuth` sul device; in produzione valuta una strategia di persistenza ufficiale per RN/Expo.
 - I permessi **notifiche** richiedono progetto con push configurato (EAS) per un token reale; l’onboarding chiede comunque il consenso.
 - Tema, tab bar e testi di UI usano l’italiano in-app come richiesto per il prodotto.

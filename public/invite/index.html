@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Istant — Invito</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        background: #0b0b0c;
+        color: #fff;
+      }
+      .wrap {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: 100%;
+        max-width: 520px;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.04);
+        border-radius: 18px;
+        padding: 20px;
+      }
+      h1 { margin: 0 0 10px; font-size: 20px; }
+      p { margin: 0 0 14px; color: rgba(255,255,255,0.75); font-weight: 600; line-height: 1.4; }
+      code {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        color: rgba(255,255,255,0.9);
+        font-weight: 700;
+      }
+      .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+      .btn {
+        appearance: none;
+        border: 1px solid rgba(255,255,255,0.16);
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-weight: 800;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .btn.primary { background: rgba(255,255,255,0.14); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Apri l’invito nell’app</h1>
+        <p>
+          Sto provando ad aprire <strong>Istant</strong>. Se non è installata, ti mando allo store.
+        </p>
+        <p>
+          Se non succede nulla, usa i pulsanti qui sotto.
+        </p>
+        <div class="btns">
+          <a class="btn primary" id="openApp" href="#">Apri nell’app</a>
+          <a class="btn" id="openIos" href="#" rel="noopener">App Store</a>
+          <a class="btn" id="openAndroid" href="#" rel="noopener">Google Play</a>
+        </div>
+        <p style="margin-top:14px; margin-bottom:0">Path: <code id="path">/invite/&lt;token&gt;</code></p>
+      </div>
+    </div>
+
+    <script>
+      // Configure store URLs (replace iOS App Store URL when you have the app id).
+      const IOS_STORE_URL = "https://apps.apple.com/app/idREPLACE_ME";
+      const ANDROID_STORE_URL = "https://play.google.com/store/apps/details?id=app.istant";
+      const APP_SCHEME = "istant";
+
+      function getTokenFromPath() {
+        const p = window.location.pathname || "";
+        const m = p.match(/\/invite\/([^\/?#]+)/);
+        return m ? decodeURIComponent(m[1]) : "";
+      }
+
+      function isAndroid() {
+        return /Android/i.test(navigator.userAgent || "");
+      }
+      function isIOS() {
+        return /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+      }
+
+      const token = getTokenFromPath();
+      const deepLink = token ? `${APP_SCHEME}://invite/${encodeURIComponent(token)}` : `${APP_SCHEME}://`;
+
+      const pathEl = document.getElementById("path");
+      if (pathEl) pathEl.textContent = window.location.pathname;
+
+      const openApp = document.getElementById("openApp");
+      const openIos = document.getElementById("openIos");
+      const openAndroid = document.getElementById("openAndroid");
+
+      if (openApp) openApp.href = deepLink;
+      if (openIos) openIos.href = IOS_STORE_URL;
+      if (openAndroid) openAndroid.href = ANDROID_STORE_URL;
+
+      // Attempt to open app, then fall back to the correct store.
+      const start = Date.now();
+      window.location.href = deepLink;
+      setTimeout(() => {
+        // If the browser is still visible after a short delay, app likely isn't installed.
+        // On iOS this isn't perfect, but it's a practical best-effort fallback.
+        if (Date.now() - start < 2200) {
+          window.location.href = isAndroid() ? ANDROID_STORE_URL : isIOS() ? IOS_STORE_URL : ANDROID_STORE_URL;
+        }
+      }, 1400);
+    </script>
+  </body>
+</html>
+

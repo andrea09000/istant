@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   View,
@@ -7,6 +7,10 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Alert,
+  Modal,
+  Pressable,
+  FlatList,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../src/components/Button';
 import { Header } from '../../src/components/Header';
 import { Avatar } from '../../src/components/Avatar';
+import { PostCard } from '../../src/components/PostCard';
 import type { FriendState } from '../../src/lib/friends';
 import { isFriend, sendFriendRequest, removeFriend } from '../../src/lib/friends';
 import { getUser } from '../../src/lib/users';
@@ -29,11 +34,14 @@ export default function UserProfileScreen() {
   const uid = (Array.isArray(uidParam) ? uidParam[0] : uidParam) ?? '';
   const { user: me } = useAuth();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const cell = (width - spacing.lg * 2 - 2) / 3;
   const [p, setP] = useState<UserProfile | null | undefined>(undefined);
   const [st, setSt] = useState<FriendState | null>(null);
   const [mine, setMine] = useState<(PostDoc & { id: string })[]>([]);
+  const [theirPosts, setTheirPosts] = useState<(PostDoc & { id: string })[]>([]);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!uid) {
@@ -63,6 +71,17 @@ export default function UserProfileScreen() {
     }
     return subscribeUserPosts(uid, setMine);
   }, [me?.uid, uid]);
+
+  useEffect(() => {
+    if (!uid) {
+      return;
+    }
+    if (!me?.uid || me.uid === uid || st !== 'accepted') {
+      setTheirPosts([]);
+      return;
+    }
+    return subscribeUserPosts(uid, setTheirPosts);
+  }, [me?.uid, uid, st]);
 
   if (p === undefined) {
     return (
@@ -98,11 +117,74 @@ export default function UserProfileScreen() {
   const isSelf = me?.uid === uid;
   const canSee = isSelf || st === 'accepted';
 
+  const viewerUid = me?.uid ?? '';
+  const visibleTheirPosts = theirPosts
+    .filter((post) => post.profileVisibility !== 'archived')
+    .filter((post) => {
+      const aud = (post as any).audienceUids as string[] | undefined;
+      return Array.isArray(aud) && aud.includes(viewerUid);
+    });
+
+  const onUserPress = (u: string) => {
+    if (!me?.uid) {
+      return;
+    }
+    if (u === me.uid) {
+      router.push('/(tabs)/profile' as any);
+      return;
+    }
+    router.push(`/user/${u}` as any);
+  };
+
   const socials = [
     { key: 'instagram', label: 'Instagram', icon: 'logo-instagram' as const, v: p.instagram },
     { key: 'tiktok', label: 'TikTok', icon: 'musical-notes-outline' as const, v: p.tiktok },
     { key: 'snapchat', label: 'Snapchat', icon: 'logo-snapchat' as const, v: p.snapchat },
   ].filter((x) => !!x.v);
+
+  function normalizeHandle(s: unknown) {
+    return String(s ?? '').trim().replace(/^@+/, '').replace(/\s+/g, '');
+  }
+
+  async function openSocialApp(kind: 'instagram' | 'tiktok' | 'snapchat', handleRaw: string) {
+    const handle = normalizeHandle(handleRaw);
+    if (!handle) {
+      return;
+    }
+    try {
+      const { appUrl, webUrl } =
+        kind === 'instagram'
+          ? {
+              appUrl: `instagram://user?username=${encodeURIComponent(handle)}`,
+              webUrl: `https://instagram.com/${encodeURIComponent(handle)}`,
+            }
+          : kind === 'tiktok'
+            ? {
+                appUrl: `tiktok://user/@${encodeURIComponent(handle)}`,
+                webUrl: `https://www.tiktok.com/@${encodeURIComponent(handle)}`,
+              }
+            : {
+                appUrl: `snapchat://add/${encodeURIComponent(handle)}`,
+                webUrl: `https://www.snapchat.com/add/${encodeURIComponent(handle)}`,
+              };
+
+      const can = await Linking.canOpenURL(appUrl);
+      await Linking.openURL(can ? appUrl : webUrl);
+    } catch {
+      // fallback to web
+      const webUrl =
+        kind === 'instagram'
+          ? `https://instagram.com/${encodeURIComponent(handle)}`
+          : kind === 'tiktok'
+            ? `https://www.tiktok.com/@${encodeURIComponent(handle)}`
+            : `https://www.snapchat.com/add/${encodeURIComponent(handle)}`;
+      try {
+        await Linking.openURL(webUrl);
+      } catch {
+        Alert.alert('Social', 'Impossibile aprire il link');
+      }
+    }
+  }
 
   const bio = p.bio?.trim();
 
@@ -158,8 +240,9 @@ export default function UserProfileScreen() {
           >
             <Text style={[titleSm, { marginBottom: 10 }]}>Social</Text>
             {socials.map((s) => (
-              <View
+              <Pressable
                 key={s.key}
+                onPress={() => void openSocialApp(s.key as any, String(s.v))}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -172,7 +255,8 @@ export default function UserProfileScreen() {
                 <Text style={[body, { flex: 1 }]} numberOfLines={1}>
                   @{String(s.v)}
                 </Text>
-              </View>
+                <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.45)" />
+              </Pressable>
             ))}
           </View>
         )}
@@ -211,7 +295,68 @@ export default function UserProfileScreen() {
         }}
       >
         <Header back title={p.displayName} />
-        <View style={{ padding: spacing.lg, gap: spacing.lg as any }}>
+        <Modal
+          visible={viewerIndex !== null}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setViewerIndex(null)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }}>
+            <Pressable style={{ flex: 1 }} onPress={() => setViewerIndex(null)} />
+            <View
+              style={{
+                backgroundColor: colors.bg,
+                borderTopLeftRadius: 22,
+                borderTopRightRadius: 22,
+                padding: spacing.lg,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.10)',
+                height: '80%',
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={[titleSm, { marginBottom: 0 }]}>ISTANT</Text>
+                <Pressable
+                  onPress={() => setViewerIndex(null)}
+                  hitSlop={10}
+                  style={({ pressed }) => ({
+                    padding: 8,
+                    borderRadius: 999,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Ionicons name="close-outline" size={22} color={colors.fg} />
+                </Pressable>
+              </View>
+              <View style={{ flex: 1, marginTop: spacing.md }}>
+                <FlatList
+                  data={visibleTheirPosts}
+                  keyExtractor={(it) => it.id}
+                  pagingEnabled
+                  showsVerticalScrollIndicator={false}
+                  decelerationRate="fast"
+                  initialScrollIndex={viewerIndex ?? 0}
+                  getItemLayout={(_, index) => {
+                    const h = (width * 0.8) as unknown as number; // rough fallback
+                    return { length: h, offset: h * index, index };
+                  }}
+                  onScrollToIndexFailed={() => {
+                    // ignore
+                  }}
+                  renderItem={({ item }) =>
+                    me?.uid ? (
+                      <View style={{ paddingBottom: Math.max(insets.bottom, 12) + 12 }}>
+                        <PostCard post={item} myUid={me.uid} onUserPress={onUserPress} />
+                      </View>
+                    ) : null
+                  }
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <View style={{ padding: spacing.lg, gap: spacing.lg as any, flex: 1 }}>
           <View
             style={{
               borderWidth: 1,
@@ -281,8 +426,9 @@ export default function UserProfileScreen() {
               <Text style={bodyMuted}>Nessun social impostato</Text>
             ) : (
               socials.map((s) => (
-                <View
+                <Pressable
                   key={s.key}
+                  onPress={() => void openSocialApp(s.key as any, String(s.v))}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -295,14 +441,42 @@ export default function UserProfileScreen() {
                   <Text style={[body, { flex: 1 }]} numberOfLines={1}>
                     @{String(s.v)}
                   </Text>
-                </View>
+                  <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.45)" />
+                </Pressable>
               ))
             )}
           </View>
 
-          <Text style={[bodyMuted, { textAlign: 'center' }]}>
-            Gli ISTANT di @{p.username} non sono visibili qui.
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[titleSm, { marginBottom: spacing.md }]}>ISTANT</Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+              }}
+            >
+              {visibleTheirPosts.map((m) => (
+                <Pressable
+                  key={m.id}
+                  onPress={() => setViewerIndex(visibleTheirPosts.findIndex((x) => x.id === m.id))}
+                  style={({ pressed }) => ({
+                    width: cell,
+                    height: cell,
+                    margin: 0.5,
+                    backgroundColor: colors.surface,
+                    opacity: pressed ? 0.88 : 1,
+                  })}
+                >
+                  <Image source={{ uri: m.photoUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                </Pressable>
+              ))}
+              {visibleTheirPosts.length === 0 && (
+                <Text style={[bodyMuted, { textAlign: 'center', width: '100%' }]}>
+                  Nessun ISTANT visibile sul profilo.
+                </Text>
+              )}
+            </View>
+          </View>
         </View>
       </View>
     );

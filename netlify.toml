@@ -1,0 +1,42 @@
+[build]
+  publish = "public"
+  command = ""
+
+# Serve required association files with JSON content-type (no redirects)
+[[headers]]
+  for = "/.well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"
+
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
+
+# Some hosts treat dot-directories specially; provide a non-dot mirror
+[[headers]]
+  for = "/well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"
+
+[[headers]]
+  for = "/well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
+
+[[redirects]]
+  from = "/.well-known/apple-app-site-association"
+  to = "/well-known/apple-app-site-association"
+  status = 200
+
+[[redirects]]
+  from = "/.well-known/assetlinks.json"
+  to = "/well-known/assetlinks.json"
+  status = 200
+
+# Optional: avoid 404 for users without the app installed
+[[redirects]]
+  from = "/invite/*"
+  to = "/invite/"
+  status = 200
+

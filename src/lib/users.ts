@@ -1,6 +1,7 @@
 import {
   collection,
   documentId,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -149,9 +150,14 @@ export async function updateProfile(
   >,
 ) {
   const firestore = assertDb();
+  // Firestore rejects `undefined`. Treat it as "remove field" for optional profile props.
+  const safePatch: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    safePatch[k] = v === undefined ? deleteField() : v;
+  }
   await setDoc(
     doc(firestore, USERS, uid),
-    patch as DocumentData,
+    safePatch as DocumentData,
     { merge: true },
   );
 }
