@@ -1,0 +1,7 @@
+# .well-known mirror (rewrite, keeps URL path for validators)
+/.well-known/apple-app-site-association  /well-known/apple-app-site-association  200
+/.well-known/assetlinks.json  /well-known/assetlinks.json  200
+
+# Inviti: /invite/<token> → stessa pagina (il token è nel path, letto da JS)
+/invite  /invite/  302
+/invite/*  /invite/index.html  200

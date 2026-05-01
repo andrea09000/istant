@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import {
   Alert,
   Linking,
-  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -66,25 +65,6 @@ export default function InviteFriends() {
     return `Aggiungi ${who} su Istant\n${u}`;
   }, [inviteUrl, profile?.username]);
 
-  async function copyLink() {
-    if (!inviteUrl) return;
-    try {
-      if (Platform.OS === 'web') {
-        const nav = globalThis.navigator as Navigator | undefined;
-        if (nav?.clipboard?.writeText) {
-          await nav.clipboard.writeText(inviteUrl);
-          Alert.alert('Copiato', 'Link copiato negli appunti.');
-          return;
-        }
-      }
-
-      // Native: no guaranteed clipboard module in all binaries → use share sheet as "copy path".
-      await Share.share({ message: inviteUrl });
-    } catch {
-      Alert.alert('Copia', 'Impossibile copiare il link.');
-    }
-  }
-
   async function shareSystem() {
     try {
       await Share.share({ message: shareText });
@@ -141,12 +121,6 @@ export default function InviteFriends() {
           </View>
 
           <View style={{ marginTop: spacing.lg, gap: spacing.md as any }}>
-            <Button
-              title={Platform.OS === 'web' ? 'Copia link' : 'Invia link'}
-              variant="secondary"
-              onPress={() => void copyLink()}
-              disabled={!inviteUrl || busy}
-            />
             <Button title="Condividi" onPress={() => void shareSystem()} disabled={!inviteUrl || busy} />
           </View>
         </View>

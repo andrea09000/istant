@@ -35,8 +35,13 @@
   to = "/well-known/assetlinks.json"
   status = 200
 
-# Optional: avoid 404 for users without the app installed
+# Invite deep links: always serve the same HTML (token is read from path in JS)
+[[redirects]]
+  from = "/invite"
+  to = "/invite/"
+  status = 302
+
 [[redirects]]
   from = "/invite/*"
-  to = "/invite/"
+  to = "/invite/index.html"
   status = 200
