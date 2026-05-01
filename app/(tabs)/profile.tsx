@@ -21,7 +21,6 @@ import { TopBar } from '../../src/components/TopBar';
 import { useAuth } from '../../src/hooks/useAuth';
 import {
   deletePost,
-  formatPostTime,
   subscribeMyPosts,
   subscribeReactions,
   subscribeViews,
@@ -352,6 +351,25 @@ export default function ProfileTab() {
               </Text>
             </Pressable>
 
+            <Pressable
+              onPress={() => router.push('/invita' as any)}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                paddingVertical: 12,
+                borderRadius: 16,
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.10)',
+              }}
+            >
+              <Ionicons name="share-outline" size={18} color={colors.accent} />
+              <Text style={{ color: colors.fg, fontSize: 15, fontWeight: '800' }}>Invita</Text>
+            </Pressable>
+
             <View
               style={{
                 width: 88,
@@ -461,9 +479,6 @@ export default function ProfileTab() {
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.fg, fontSize: 15, fontWeight: '900' }}>
                       {profile.isAdvertiser ? 'inserzione' : `@${profile.username}`}
-                    </Text>
-                    <Text style={{ color: colors.muted, fontSize: 12 }}>
-                      {formatPostTime(p.createdAt as any)}
                     </Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

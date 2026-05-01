@@ -13,6 +13,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
+    "androidStatusBar": {
+      "backgroundColor": "#000000",
+      "barStyle": "light-content"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.istant.app",

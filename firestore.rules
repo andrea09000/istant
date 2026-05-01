@@ -14,12 +14,6 @@ service cloud.firestore {
       allow create, update, delete: if isSelf(uid);
     }
 
-    match /usernames/{uname} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
-    }
-
     match /friendships/{id} {
       // Allow `get()` to check existence before creating.
       // If the doc doesn't exist, reading it reveals nothing, but unblocks client logic.
@@ -71,6 +65,12 @@ service cloud.firestore {
         && request.auth.uid == vid
         && request.auth.uid in postDoc(postId).data.audienceUids;
       allow delete: if true;
+    }
+
+    match /istantMoments/{momentId} {
+      // Created and managed server-side (Cloud Functions). Clients can only read if included.
+      allow read: if isSignedIn() && request.auth.uid in resource.data.audienceUids;
+      allow create, update, delete: if false;
     }
 
     // Abuse reports (write-only for users; readable only by the reporter for now)

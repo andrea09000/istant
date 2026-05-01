@@ -24,7 +24,7 @@ export default function UsernameOnboarding() {
     >
       <View style={{ flex: 1, padding: spacing.lg, justifyContent: 'center' }}>
         <Text style={{ color: '#FFF', fontSize: 44, fontWeight: '900', textAlign: 'center' }}>
-          scegli uno <Text style={{ color: neon }}>username</Text>
+          Scegli uno <Text style={{ color: neon }}>username</Text>
         </Text>
 
         <View style={{ height: 22 }} />
@@ -34,7 +34,7 @@ export default function UsernameOnboarding() {
           onChangeText={setV}
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder="username"
+          placeholder="Username"
           placeholderTextColor="#7A7A7A"
           style={{
             backgroundColor: '#1A1A1A',
@@ -48,7 +48,7 @@ export default function UsernameOnboarding() {
           }}
         />
         <Text style={{ color: '#7A7A7A', marginTop: 10, textAlign: 'center' }}>
-          user: <Text style={{ color: '#B3B3B3' }}>@{clean || '…'}</Text> (min 3, a-z 0-9 _)
+          User: <Text style={{ color: '#B3B3B3' }}>@{clean || '…'}</Text> (min 3, a-z 0-9 _)
         </Text>
 
         <View style={{ height: 16 }} />
@@ -88,7 +88,7 @@ export default function UsernameOnboarding() {
           ]}
         >
           <Text style={{ color: '#000', fontSize: 18, fontWeight: '900' }}>
-            {checking ? '…' : 'continua'}
+            {checking ? '…' : 'Continua'}
           </Text>
         </Pressable>
       </View>

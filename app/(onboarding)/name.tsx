@@ -21,7 +21,7 @@ export default function NameOnboarding() {
     >
       <View style={{ flex: 1, padding: spacing.lg, justifyContent: 'center' }}>
         <Text style={{ color: '#FFF', fontSize: 44, fontWeight: '900', textAlign: 'center' }}>
-          qual è il tuo <Text style={{ color: neon }}>nome</Text>?
+          Qual è il tuo <Text style={{ color: neon }}>nome</Text>?
         </Text>
 
         <View style={{ height: 22 }} />
@@ -61,7 +61,7 @@ export default function NameOnboarding() {
             },
           ]}
         >
-          <Text style={{ color: '#000', fontSize: 18, fontWeight: '900' }}>continua</Text>
+          <Text style={{ color: '#000', fontSize: 18, fontWeight: '900' }}>Continua</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>

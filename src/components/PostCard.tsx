@@ -188,14 +188,30 @@ export function PostCard({ post, myUid, onUserPress }: Props) {
         >
           <Avatar size={40} uri={author?.avatarUrl} />
           <View style={{ flex: 1 }}>
-            <Text
-              style={[
-                titleSm,
-                { fontSize: 16, fontWeight: '800', color: '#000000' },
-              ]}
-            >
-              @{author?.username ?? '…'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text
+                style={[
+                  titleSm,
+                  { fontSize: 16, fontWeight: '800', color: '#000000' },
+                ]}
+              >
+                @{author?.username ?? '…'}
+              </Text>
+              {post.audience === 'close' ? (
+                <View
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 999,
+                    backgroundColor: '#000000',
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>
+                    Amici stretti
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         </Pressable>
 

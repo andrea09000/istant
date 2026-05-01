@@ -1,4 +1,6 @@
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -86,6 +88,13 @@ export async function acceptRequest(currentUid: string, otherUid: string) {
     } as unknown as Partial<FriendshipDoc>,
     { merge: true },
   );
+  // Denormalize accepted friendships onto *my* users/{uid}.
+  // Note: client rules only allow writing your own user doc.
+  await setDoc(
+    doc(firestore, USERS, currentUid),
+    { friendUids: arrayUnion(otherUid) },
+    { merge: true },
+  );
 }
 
 export async function rejectRequest(currentUid: string, otherUid: string) {
@@ -106,6 +115,12 @@ export async function rejectRequest(currentUid: string, otherUid: string) {
 export async function removeFriend(a: string, b: string) {
   const firestore = assertDb();
   await deleteDoc(doc(firestore, FRIENDSHIPS, pairId(a, b)));
+  // Best-effort: keep denormalized friend lists in sync.
+  try {
+    await setDoc(doc(firestore, USERS, a), { friendUids: arrayRemove(b) }, { merge: true });
+  } catch {
+    // ignore
+  }
   const closeA = doc(firestore, USERS, a, CLOSE_FRIENDS, b);
   const closeB = doc(firestore, USERS, b, CLOSE_FRIENDS, a);
   try {

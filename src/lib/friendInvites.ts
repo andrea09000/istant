@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 import type { FriendInviteDoc } from '../types';
 import { db } from './firebase';
+import { USERS } from './users';
 
 const FRIEND_INVITES = 'friendInvites';
 
@@ -34,6 +35,15 @@ export async function createFriendInvite(ownerUid: string) {
     createdAt: new Date().toISOString(),
   };
   await setDoc(ref, data);
+  // Denormalize onto users/{uid} for quick access in app.
+  await setDoc(
+    doc(firestore, USERS, ownerUid),
+    {
+      friendInviteToken: token,
+      friendInviteCreatedAt: data.createdAt,
+    },
+    { merge: true },
+  );
   const url =
     typeof APP_ORIGIN === 'string' && APP_ORIGIN.startsWith('https://')
       ? `${APP_ORIGIN.replace(/\/+$/, '')}/invite/${token}`

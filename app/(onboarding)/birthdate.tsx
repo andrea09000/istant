@@ -10,12 +10,20 @@ import { uploadImage } from '../../src/lib/storage';
 
 const neon = '#FFFFFF';
 
-function parseDDMMYYYY(s: string) {
-  const m = s.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+/** Ultime due cifre dell'anno → anno completo (20YY, o 19YY se 20YY è nel futuro). */
+function yyToFullYear(yy: number, nowYear = new Date().getFullYear()) {
+  let y = 2000 + yy;
+  if (y > nowYear) y -= 100;
+  return y;
+}
+
+function parseDDMMYY(s: string) {
+  const m = s.trim().match(/^(\d{2})\/(\d{2})\/(\d{2})$/);
   if (!m) return null;
   const dd = Number(m[1]);
   const mm = Number(m[2]);
-  const yyyy = Number(m[3]);
+  const yy = Number(m[3]);
+  const yyyy = yyToFullYear(yy);
   if (yyyy < 1900 || yyyy > 2100) return null;
   if (mm < 1 || mm > 12) return null;
   if (dd < 1 || dd > 31) return null;
@@ -29,16 +37,16 @@ export default function BirthdateOnboarding() {
   const [v, setV] = useState(birthDate);
   const [saving, setSaving] = useState(false);
 
-  const parsed = useMemo(() => parseDDMMYYYY(v), [v]);
+  const parsed = useMemo(() => parseDDMMYY(v), [v]);
   const can = useMemo(() => !!parsed, [parsed]);
 
   async function finish() {
     if (!user?.uid) {
       return;
     }
-    const p = parseDDMMYYYY(v);
+    const p = parseDDMMYY(v);
     if (!p) {
-      Alert.alert('Data', 'Formato valido: GG/MM/AAAA');
+      Alert.alert('Data', 'Formato valido: GG/MM/AA');
       return;
     }
     if (!displayName.trim() || username.trim().length < 3) {
@@ -74,7 +82,7 @@ export default function BirthdateOnboarding() {
     >
       <View style={{ flex: 1, padding: spacing.lg, justifyContent: 'center' }}>
         <Text style={{ color: '#FFF', fontSize: 44, fontWeight: '900', textAlign: 'center' }}>
-          data di <Text style={{ color: neon }}>nascita</Text>
+          Data di <Text style={{ color: neon }}>nascita</Text>
         </Text>
 
         <View style={{ height: 22 }} />
@@ -83,15 +91,15 @@ export default function BirthdateOnboarding() {
           value={v}
           onChangeText={(t) => {
             // auto-insert slashes
-            const digits = t.replace(/[^\d]/g, '').slice(0, 8);
+            const digits = t.replace(/[^\d]/g, '').slice(0, 6);
             const dd = digits.slice(0, 2);
             const mm = digits.slice(2, 4);
-            const yy = digits.slice(4, 8);
+            const yy = digits.slice(4, 6);
             const out = [dd, mm, yy].filter(Boolean).join('/');
             setV(out);
           }}
           keyboardType="number-pad"
-          placeholder="GG/MM/AAAA"
+          placeholder="GG/MM/AA"
           placeholderTextColor="#7A7A7A"
           style={{
             backgroundColor: '#1A1A1A',
@@ -105,7 +113,7 @@ export default function BirthdateOnboarding() {
           }}
         />
         <Text style={{ color: '#7A7A7A', marginTop: 10, textAlign: 'center' }}>
-          es. 14/02/2001
+          Es. 14/02/01 (anno: ultime due cifre, es. 09 → 2009)
         </Text>
 
         <View style={{ height: 16 }} />
@@ -124,7 +132,7 @@ export default function BirthdateOnboarding() {
           ]}
         >
           <Text style={{ color: '#000', fontSize: 18, fontWeight: '900' }}>
-            {saving ? '…' : 'continua'}
+            {saving ? '…' : 'Continua'}
           </Text>
         </Pressable>
       </View>

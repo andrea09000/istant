@@ -154,8 +154,16 @@ export default function Settings() {
                   void (async () => {
                     try {
                       await deleteMyAccount();
-                      router.replace('/');
+                      await signOutUser();
+                      router.replace('/welcome' as any);
                     } catch (e) {
+                      if (String((e as any)?.code ?? '') === 'auth/requires-recent-login') {
+                        Alert.alert(
+                          'Sessione scaduta',
+                          'Per eliminare l’account serve rifare login. Accedi di nuovo e riprova.',
+                        );
+                        return;
+                      }
                       Alert.alert(
                         'Errore',
                         e instanceof Error
@@ -321,18 +329,8 @@ export default function Settings() {
           <SettingsRow
             icon="notifications-outline"
             title="Notifiche"
-            subtitle="Permessi & sistema"
-            onPress={async () => {
-              if (Platform.OS === 'web') {
-                return;
-              }
-              try {
-                await registerForPushNotificationsAsync();
-              } catch {
-                // ignore
-              }
-              Linking.openSettings();
-            }}
+            subtitle="Preferenze & permessi"
+            onPress={() => router.push('/notification-preferences' as any)}
           />
         </View>
 

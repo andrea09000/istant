@@ -93,7 +93,7 @@ export default function AvatarOnboarding() {
     <View style={{ flex: 1, backgroundColor: '#000', padding: spacing.lg }}>
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ color: '#FFF', fontSize: 40, fontWeight: '900', textAlign: 'center' }}>
-          scegli il tuo <Text style={{ color: neon }}>avatar</Text>
+          Scegli il tuo <Text style={{ color: neon }}>avatar</Text>
         </Text>
 
         <View style={{ height: 28 }} />
@@ -117,15 +117,15 @@ export default function AvatarOnboarding() {
             }}
           >
             <Text style={{ fontSize: 16, color: '#000', fontWeight: '800', letterSpacing: -0.2 }}>
-              scegli
+              Scegli
             </Text>
           </Pressable>
         </View>
       </View>
 
       <View style={{ gap: spacing.md as any }}>
-        <DarkButton label={busy ? '…' : 'aprire il rullino'} onPress={pickFromLibrary} disabled={busy} />
-        <DarkButton label={busy ? '…' : 'scatta un selfie'} onPress={takeSelfie} disabled={busy} />
+        <DarkButton label={busy ? '…' : 'Apri il rullino'} onPress={pickFromLibrary} disabled={busy} />
+        <DarkButton label={busy ? '…' : 'Scatta un selfie'} onPress={takeSelfie} disabled={busy} />
       </View>
     </View>
   );

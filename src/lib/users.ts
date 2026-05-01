@@ -1,6 +1,5 @@
 import {
   collection,
-  documentId,
   deleteField,
   doc,
   getDoc,
@@ -11,7 +10,6 @@ import {
   orderBy,
   limit,
   setDoc,
-  runTransaction,
   type Unsubscribe,
   type DocumentData,
 } from 'firebase/firestore';
@@ -20,7 +18,6 @@ import type { UserProfile } from '../types';
 import { db } from './firebase';
 
 export const USERS = 'users';
-export const USERNAMES = 'usernames';
 export const CLOSE_FRIENDS = 'closeFriends';
 
 function assertDb() {
@@ -69,19 +66,26 @@ export function normalizeDisplayNameKey(s: string) {
     .replace(/\s+/g, ' ');
 }
 
-export async function isUsernameAvailable(username: string) {
+export async function isUsernameAvailable(username: string, excludeUid?: string) {
   const firestore = assertDb();
   const u = normalizeUsername(username);
   if (u.length < 3) {
     return false;
   }
-  const snap = await getDoc(doc(firestore, USERNAMES, u));
-  return !snap.exists();
+  const snap = await getDocs(
+    query(collection(firestore, USERS), where('username', '==', u), limit(5)),
+  );
+  for (const d of snap.docs) {
+    if (excludeUid && d.id === excludeUid) {
+      continue;
+    }
+    return false;
+  }
+  return true;
 }
 
 /**
- * Create profile: users/{uid} and usernames/{lowercase} -> { uid }
- * Uses transaction to enforce unique username.
+ * Create profile: only users/{uid}. Username uniqueness enforced via username field query.
  */
 export async function createOrUpdateProfile(
   uid: string,
@@ -100,48 +104,39 @@ export async function createOrUpdateProfile(
   const usernameKey = u;
   const displayNameKey = normalizeDisplayNameKey(data.displayName);
   const userRef = doc(firestore, USERS, uid);
-  const unameRef = doc(firestore, USERNAMES, usernameKey);
 
-  await runTransaction(firestore, async (t) => {
-    const uSnap = await t.get(userRef);
-    const existingUname = (uSnap.data() as UserProfile & { _usernameKey?: string })
-      ?._usernameKey;
-    if (uSnap.exists() && existingUname && existingUname !== usernameKey) {
-      const oldRef = doc(firestore, USERNAMES, existingUname);
-      t.delete(oldRef);
-    }
-
-    const nameSnap = await t.get(unameRef);
-    if (nameSnap.exists() && (nameSnap.data() as { uid: string }).uid !== uid) {
+  const taken = await getDocs(
+    query(collection(firestore, USERS), where('username', '==', usernameKey), limit(25)),
+  );
+  for (const d of taken.docs) {
+    if (d.id !== uid) {
       throw new Error('Username is already taken');
     }
-    t.set(
-      unameRef,
-      { uid },
-      { merge: true },
-    );
-    const isNew = !uSnap.exists();
-    const prev = (uSnap.data() as UserProfile & { createdAt?: unknown } | undefined) || {};
-    t.set(
-      userRef,
-      {
-        ...data,
-        username: u,
-        _usernameKey: usernameKey,
-        _displayNameKey: displayNameKey,
-        ...(isNew
-          ? {
-              onboardingNotifDone: false,
-              onboardingCameraDone: false,
-            }
-          : {}),
-        createdAt: isNew
-          ? new Date().toISOString()
-          : (prev as { createdAt?: unknown }).createdAt ?? new Date().toISOString(),
-      } as UserProfile & DocumentData,
-      { merge: true },
-    );
-  });
+  }
+
+  const uSnap = await getDoc(userRef);
+  const isNew = !uSnap.exists();
+  const prev = (uSnap.data() as UserProfile & { createdAt?: unknown } | undefined) || {};
+  await setDoc(
+    userRef,
+    {
+      ...data,
+      username: u,
+      _usernameKey: usernameKey,
+      _displayNameKey: displayNameKey,
+      ...(isNew
+        ? {
+            onboardingNotifDone: false,
+            onboardingCameraDone: false,
+            friendUids: [],
+          }
+        : {}),
+      createdAt: isNew
+        ? new Date().toISOString()
+        : (prev as { createdAt?: unknown }).createdAt ?? new Date().toISOString(),
+    } as UserProfile & DocumentData,
+    { merge: true },
+  );
 }
 
 export async function updateProfile(
@@ -202,18 +197,55 @@ export async function searchUsernames(
   const firestore = assertDb();
   const res = await getDocs(
     query(
-      collection(firestore, USERNAMES),
-      where(documentId(), '>=', p),
-      where(documentId(), '<=', p + '\uf8ff'),
-      orderBy(documentId()),
-      limit(max + 2),
+      collection(firestore, USERS),
+      where('_usernameKey', '>=', p),
+      where('_usernameKey', '<=', p + '\uf8ff'),
+      orderBy('_usernameKey'),
+      limit(max + 8),
     ),
   );
-  return res.docs
-    .map((d) => ({ username: d.id, uid: (d.data() as { uid: string }).uid }))
+  const primary = res.docs
+    .map((d) => {
+      const data = d.data() as UserProfile;
+      const username = data._usernameKey ?? data.username;
+      return { username, uid: d.id };
+    })
     .filter((r) => r.username.startsWith(p))
-    .filter((r) => (excludeUid ? r.uid !== excludeUid : true))
-    .slice(0, max);
+    .filter((r) => (excludeUid ? r.uid !== excludeUid : true));
+
+  if (primary.length >= max) {
+    return primary.slice(0, max);
+  }
+
+  // Older profiles may lack `_usernameKey`; prefix-search on `username`.
+  const byUid = new Map<string, { username: string; uid: string }>();
+  for (const r of primary) {
+    byUid.set(r.uid, r);
+  }
+  const sn = await getDocs(
+    query(
+      collection(firestore, USERS),
+      where('username', '>=', p),
+      where('username', '<=', p + '\uf8ff'),
+      orderBy('username'),
+      limit(max + 8),
+    ),
+  );
+  for (const d of sn.docs) {
+    if (excludeUid && d.id === excludeUid) {
+      continue;
+    }
+    const data = d.data() as UserProfile;
+    const username = data.username;
+    if (!username?.startsWith(p)) {
+      continue;
+    }
+    byUid.set(d.id, { uid: d.id, username });
+    if (byUid.size >= max) {
+      break;
+    }
+  }
+  return Array.from(byUid.values()).slice(0, max);
 }
 
 export async function searchDisplayNames(

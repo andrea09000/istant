@@ -5,7 +5,6 @@ import {
   FlatList,
   Pressable,
   Alert,
-  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -13,7 +12,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar } from '../src/components/Avatar';
 import { getUser } from '../src/lib/users';
-import { createFriendInvite } from '../src/lib/friendInvites';
 import {
   acceptRequest,
   rejectRequest,
@@ -89,20 +87,6 @@ export default function FriendsScreen() {
           }}
         />
 
-        <Button
-          title="Condividi link invito"
-          variant="secondary"
-          onPress={async () => {
-            try {
-              const { url } = await createFriendInvite(user.uid);
-              await Share.share({
-                message: `Aggiungimi su Istant: ${url}`,
-              });
-            } catch (e) {
-              Alert.alert('Errore', e instanceof Error ? e.message : 'Errore');
-            }
-          }}
-        />
       </View>
 
       {tab === 'friends' ? (

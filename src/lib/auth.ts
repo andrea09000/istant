@@ -18,6 +18,7 @@ import {
   signOut,
   type User,
   GoogleAuthProvider,
+  type User as FirebaseUser,
 } from 'firebase/auth';
 import { Platform } from 'react-native';
 
@@ -125,4 +126,37 @@ export async function signOutUser() {
   } catch {
     // ignore
   }
+}
+
+/**
+ * Re-authenticate the current user for sensitive actions (delete account, etc).
+ * Uses an interactive provider flow (Apple on iOS, Google otherwise) based on the
+ * user's linked provider. Falls back to trying Apple then Google.
+ */
+export async function reauthenticateCurrentUser(): Promise<FirebaseUser> {
+  if (!auth?.currentUser) {
+    throw new Error('Auth non disponibile');
+  }
+  const providerIds = auth.currentUser.providerData.map((p) => p.providerId);
+
+  const tryAppleFirst = providerIds.includes('apple.com');
+  const tryGoogleFirst = providerIds.includes('google.com');
+
+  const attempts: Array<() => Promise<User>> = [];
+  if (tryAppleFirst) attempts.push(() => signInWithApple());
+  if (tryGoogleFirst) attempts.push(() => signInWithGoogle());
+  // Fallback order
+  if (!tryAppleFirst) attempts.push(() => signInWithApple());
+  if (!tryGoogleFirst) attempts.push(() => signInWithGoogle());
+
+  let lastErr: unknown = null;
+  for (const a of attempts) {
+    try {
+      const u = await a();
+      return u;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('Impossibile fare re-login');
 }

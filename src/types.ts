@@ -6,6 +6,12 @@ export type UserProfile = {
   username: string;
   displayName: string;
   birthYear: number;
+  /** Shareable invite token for /friendInvites/{token} (optional). */
+  friendInviteToken?: string;
+  /** ISO timestamp when the current invite token was created. */
+  friendInviteCreatedAt?: string;
+  /** Denormalized accepted friends (uids). */
+  friendUids?: string[];
   avatarUrl?: string;
   bio?: string;
   instagram?: string;
@@ -15,6 +21,10 @@ export type UserProfile = {
   isAdvertiser?: boolean;
   createdAt?: Timestamp;
   fcmToken?: string;
+  /** Notifications preferences (server-side push). Defaults to true when missing. */
+  notif_postFromFriends?: boolean;
+  /** Notifications preferences (server-side push). Defaults to true when missing. */
+  notif_istantMoment?: boolean;
   /** First-run onboarding: after profile, permissions screens */
   onboardingNotifDone?: boolean;
   onboardingCameraDone?: boolean;

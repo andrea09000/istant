@@ -1,13 +1,28 @@
 import { useRouter } from 'expo-router';
-import { Text, View, Platform, Alert, ScrollView, Pressable } from 'react-native';
+import { Text, View, Platform, Alert, ScrollView, Pressable, Linking } from 'react-native';
 import { useState } from 'react';
 
-import { signInAnonymously } from 'firebase/auth';
 import { signInWithApple, signInWithGoogle, configureGoogleSignIn } from '../../src/lib/auth';
 import { auth, firebaseConfigured } from '../../src/lib/firebase';
 import { spacing } from '../../src/theme/spacing';
 import { body } from '../../src/theme/typography';
 import { useOnboardingStore } from '../../src/store/onboardingStore';
+
+const TERMS_URL = 'https://istantapp.it/termini-condizioni';
+const PRIVACY_URL = 'https://istantapp.it/privacypolicy';
+
+async function openLegal(url: string) {
+  try {
+    const ok = await Linking.canOpenURL(url);
+    if (!ok) {
+      Alert.alert('Link', 'Impossibile aprire il link.');
+      return;
+    }
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert('Link', 'Impossibile aprire il link.');
+  }
+}
 
 export default function Welcome() {
   const router = useRouter();
@@ -52,23 +67,6 @@ export default function Welcome() {
     }
   }
 
-  async function onSkip() {
-    if (!auth || !firebaseConfigured) {
-      Alert.alert('Firebase', 'Imposta le variabili EXPO_PUBLIC_FIREBASE_* in .env');
-      return;
-    }
-    setLoading(true);
-    try {
-      await signInAnonymously(auth);
-      resetOnboardingDraft();
-      router.replace('/');
-    } catch (e) {
-      Alert.alert('Accesso', e instanceof Error ? e.message : 'Errore');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <ScrollView
       contentContainerStyle={{
@@ -101,14 +99,22 @@ export default function Welcome() {
         />
       </View>
 
-      <Pressable onPress={onSkip} disabled={loading} style={{ marginTop: spacing.xl }}>
-        <Text style={{ color: '#B3B3B3', textAlign: 'center', textDecorationLine: 'underline' }}>
-          Salta (demo)
+      <Text style={[body, { color: '#B3B3B3', textAlign: 'center', marginTop: spacing.xl, lineHeight: 22 }]}>
+        Continuando accetti i{' '}
+        <Text
+          onPress={() => void openLegal(TERMS_URL)}
+          style={{ color: '#FFFFFF', textDecorationLine: 'underline', fontWeight: '700' }}
+        >
+          Termini e Condizioni
+        </Text>{' '}
+        e la{' '}
+        <Text
+          onPress={() => void openLegal(PRIVACY_URL)}
+          style={{ color: '#FFFFFF', textDecorationLine: 'underline', fontWeight: '700' }}
+        >
+          Privacy Policy
         </Text>
-      </Pressable>
-
-      <Text style={[body, { color: '#B3B3B3', textAlign: 'center', marginTop: spacing.xl }]}>
-        Continuando accetti i Termini e Condizioni e la Privacy Policy
+        .
       </Text>
 
       {!firebaseConfigured ? (

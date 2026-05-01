@@ -4,7 +4,7 @@ type OnboardingDraft = {
   avatarUri: string | null;
   displayName: string;
   username: string;
-  birthDate: string; // DD/MM/YYYY
+  birthDate: string; // DD/MM/YY
   setAvatarUri: (uri: string | null) => void;
   setDisplayName: (name: string) => void;
   setUsername: (u: string) => void;

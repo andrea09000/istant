@@ -8,17 +8,17 @@ import {
   query,
   where,
   limit,
-  type DocumentData,
 } from 'firebase/firestore';
 import {
   deleteObject,
   listAll,
   ref as storageRef,
 } from 'firebase/storage';
-import { deleteUser } from 'firebase/auth';
+import { deleteUser, signOut } from 'firebase/auth';
 
 import { auth, db, storage } from './firebase';
-import { USERS, USERNAMES, CLOSE_FRIENDS, getUser } from './users';
+import { reauthenticateCurrentUser } from './auth';
+import { USERS, CLOSE_FRIENDS, getUser } from './users';
 
 const POSTS = 'posts';
 const FRIENDSHIPS = 'friendships';
@@ -159,29 +159,41 @@ export async function deleteMyAccount() {
     // ignore
   }
 
-  // 4) Delete username mapping
-  try {
-    const profile = await getUser(uid);
-    const key = (profile as (DocumentData & { _usernameKey?: string }) | null)?._usernameKey ?? profile?.username;
-    if (key) {
-      await tryDeleteDoc({ collection: USERNAMES, id: String(key) });
-    }
-  } catch {
-    // ignore
-  }
-
-  // 5) Delete user profile doc
+  // 4) Delete user profile doc
   try {
     await tryDeleteDoc({ collection: USERS, id: uid });
   } catch {
     // ignore
   }
 
-  // 6) Delete storage files
+  // 5) Delete storage files
   await deleteStorageFolder(`avatars/${uid}`);
   await deleteStorageFolder(`posts/${uid}`);
 
-  // 7) Finally delete auth user (may require recent login)
-  await deleteUser(me);
+  // 6) Finally delete auth user (may require recent login)
+  try {
+    await deleteUser(me);
+  } catch (e: any) {
+    const code = String(e?.code ?? '');
+    if (code === 'auth/requires-recent-login') {
+      // Interactive re-login, then retry.
+      await reauthenticateCurrentUser();
+      if (!auth?.currentUser) {
+        throw new Error('Sessione scaduta: rifai login e riprova.');
+      }
+      await deleteUser(auth.currentUser);
+    } else {
+      throw e;
+    }
+  }
+
+  // Clear local session (best-effort)
+  try {
+    if (auth) {
+      await signOut(auth);
+    }
+  } catch {
+    // ignore
+  }
 }
 
