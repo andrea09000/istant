@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { View, Text, FlatList, Switch, Alert } from 'react-native';
+import { View, Text, FlatList, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../src/components/Header';
 import { Avatar } from '../src/components/Avatar';
@@ -97,18 +98,38 @@ export default function CloseFriends() {
                 <Text style={titleSm}>{p?.displayName}</Text>
                 <Text style={bodyMuted}>@{p?.username}</Text>
               </View>
-              <Switch
-                value={isClose}
-                onValueChange={async (v) => {
-                  try {
-                    await toggleCloseFriend(user.uid, uid, v);
-                  } catch (e) {
-                    Alert.alert('Amici stretti', e instanceof Error ? e.message : 'Errore');
-                  }
+              <Text
+                onPress={() => {
+                  void (async () => {
+                    try {
+                      await toggleCloseFriend(user.uid, uid, !isClose);
+                    } catch (e) {
+                      Alert.alert('Amici stretti', e instanceof Error ? e.message : 'Errore');
+                    }
+                  })();
                 }}
-                trackColor={{ true: colors.fg, false: colors.border }}
-                thumbColor={colors.bg}
-              />
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.12)',
+                  backgroundColor: isClose ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.10)',
+                  color: colors.fg,
+                  fontWeight: '900',
+                  overflow: 'hidden',
+                }}
+              >
+                {isClose ? (
+                  <>
+                    <Ionicons name="close" size={14} color={colors.fg} /> Rimuovi
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="add" size={14} color={colors.fg} /> Aggiungi
+                  </>
+                )}
+              </Text>
             </View>
           );
         }}

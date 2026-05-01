@@ -1,7 +1,7 @@
 [build]
-  # Main marketing / web app site (NOT the invite-only static site).
-  command = "npm run export:web"
-  publish = "dist"
+  # Invite + association files only (second Netlify site on get.istantapp.it).
+  publish = "public"
+  command = ""
 
 # Serve required association files with JSON content-type (no redirects)
 [[headers]]
@@ -40,4 +40,3 @@
   from = "/invite/*"
   to = "/invite/"
   status = 200
-

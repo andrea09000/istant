@@ -460,7 +460,7 @@ export default function ProfileTab() {
                   />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.fg, fontSize: 15, fontWeight: '900' }}>
-                      @{profile.username}
+                      {profile.isAdvertiser ? 'inserzione' : `@${profile.username}`}
                     </Text>
                     <Text style={{ color: colors.muted, fontSize: 12 }}>
                       {formatPostTime(p.createdAt as any)}

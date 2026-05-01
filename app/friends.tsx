@@ -148,7 +148,7 @@ export default function FriendsScreen() {
                     {p?.displayName ?? '—'}
                   </Text>
                   <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '700', marginTop: 4 }}>
-                    @{p?.username ?? fid}
+                    @{p?.username ?? '…'}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.45)" />
@@ -193,7 +193,7 @@ export default function FriendsScreen() {
                       {p?.displayName ?? 'Richiesta'}
                     </Text>
                     <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '700', marginTop: 4 }}>
-                      @{p?.username ?? item.fromUid}
+                      @{p?.username ?? '…'}
                     </Text>
                   </View>
                 </View>

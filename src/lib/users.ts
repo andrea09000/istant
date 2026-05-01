@@ -61,6 +61,14 @@ export function normalizeUsername(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9_]/g, '');
 }
 
+export function normalizeDisplayNameKey(s: string) {
+  // Prefix-search friendly: lowercase, trimmed, collapse spaces.
+  return String(s ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 export async function isUsernameAvailable(username: string) {
   const firestore = assertDb();
   const u = normalizeUsername(username);
@@ -90,6 +98,7 @@ export async function createOrUpdateProfile(
     throw new Error('Username: min 3 characters (a-z, 0-9, _)');
   }
   const usernameKey = u;
+  const displayNameKey = normalizeDisplayNameKey(data.displayName);
   const userRef = doc(firestore, USERS, uid);
   const unameRef = doc(firestore, USERNAMES, usernameKey);
 
@@ -119,6 +128,7 @@ export async function createOrUpdateProfile(
         ...data,
         username: u,
         _usernameKey: usernameKey,
+        _displayNameKey: displayNameKey,
         ...(isNew
           ? {
               onboardingNotifDone: false,
@@ -204,4 +214,71 @@ export async function searchUsernames(
     .filter((r) => r.username.startsWith(p))
     .filter((r) => (excludeUid ? r.uid !== excludeUid : true))
     .slice(0, max);
+}
+
+export async function searchDisplayNames(
+  prefix: string,
+  max: number = 20,
+  excludeUid?: string,
+) {
+  const p = normalizeDisplayNameKey(prefix);
+  if (p.length < 1) {
+    return [] as { uid: string; username: string; displayName: string }[];
+  }
+  const firestore = assertDb();
+  const res = await getDocs(
+    query(
+      collection(firestore, USERS),
+      where('_displayNameKey', '>=', p),
+      where('_displayNameKey', '<=', p + '\uf8ff'),
+      orderBy('_displayNameKey'),
+      limit(max + 4),
+    ),
+  );
+  const hits = res.docs
+    .map((d) => ({ uid: d.id, ...(d.data() as UserProfile) }))
+    .filter((r) => (excludeUid ? r.uid !== excludeUid : true))
+    .map((r) => ({ uid: r.uid, username: r.username, displayName: r.displayName }))
+    .slice(0, max);
+
+  if (hits.length > 0) {
+    return hits;
+  }
+
+  // Backwards-compat fallback: older profiles may not have `_displayNameKey` yet.
+  // Try prefix-search on `displayName` directly (case-sensitive), with a couple variants.
+  const raw = String(prefix ?? '').trim();
+  const variants = Array.from(
+    new Set(
+      [
+        raw,
+        raw.toLowerCase(),
+        raw.toUpperCase(),
+        raw.length > 0 ? raw[0].toUpperCase() + raw.slice(1) : raw,
+      ].filter((x) => x.length > 0),
+    ),
+  ).slice(0, 3);
+
+  const byUid = new Map<string, { uid: string; username: string; displayName: string }>();
+  for (const v of variants) {
+    const sn = await getDocs(
+      query(
+        collection(firestore, USERS),
+        where('displayName', '>=', v),
+        where('displayName', '<=', v + '\uf8ff'),
+        orderBy('displayName'),
+        limit(max + 8),
+      ),
+    );
+    for (const d of sn.docs) {
+      const data = d.data() as UserProfile;
+      if (excludeUid && d.id === excludeUid) continue;
+      if (!data?.username || !data?.displayName) continue;
+      byUid.set(d.id, { uid: d.id, username: data.username, displayName: data.displayName });
+      if (byUid.size >= max) break;
+    }
+    if (byUid.size >= max) break;
+  }
+
+  return Array.from(byUid.values()).slice(0, max);
 }

@@ -14,13 +14,13 @@ import { Button } from '../src/components/Button';
 import { Header } from '../src/components/Header';
 import { TextField } from '../src/components/TextField';
 import { isFriend, sendFriendRequest } from '../src/lib/friends';
-import { searchUsernames } from '../src/lib/users';
+import { searchDisplayNames, searchUsernames } from '../src/lib/users';
 import { useAuth } from '../src/hooks/useAuth';
 import { colors } from '../src/theme/colors';
 import { spacing } from '../src/theme/spacing';
 import { bodyMuted, titleSm } from '../src/theme/typography';
 
-type Row = { username: string; uid: string; state: string; loading: boolean };
+type Row = { username: string; displayName?: string; uid: string; state: string; loading: boolean };
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -32,13 +32,26 @@ export default function SearchScreen() {
 
   const runSearch = useCallback(
     async (s: string) => {
-      if (s.length < 2) {
+      if (s.length < 1) {
         setList([]);
         return;
       }
       setLoading(true);
       try {
-        const r = await searchUsernames(s, 30, me?.uid);
+        const [byUname, byName] = await Promise.all([
+          searchUsernames(s, 30, me?.uid),
+          searchDisplayNames(s, 30, me?.uid),
+        ]);
+
+        const byUid = new Map<string, { uid: string; username: string; displayName?: string }>();
+        for (const u of byUname) {
+          byUid.set(u.uid, { uid: u.uid, username: u.username });
+        }
+        for (const u of byName) {
+          byUid.set(u.uid, { uid: u.uid, username: u.username, displayName: u.displayName });
+        }
+
+        const r = Array.from(byUid.values()).slice(0, 30);
         const withState = await Promise.all(
           r.map(async (u) => {
             const st = me ? await isFriend(me.uid, u.uid) : 'none';
@@ -66,7 +79,7 @@ export default function SearchScreen() {
   useEffect(() => {
     const t = setTimeout(() => {
       void runSearch(q);
-    }, 300);
+    }, 160);
     return () => clearTimeout(t);
   }, [q, runSearch]);
 
@@ -108,12 +121,12 @@ export default function SearchScreen() {
       <Header back title="Cerca" />
       <View style={{ padding: spacing.lg }}>
         <TextField
-          label="username"
+          label="nome o username"
           value={q}
           onChangeText={setQ}
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder="Cerca @username"
+          placeholder="Cerca nome o @username"
         />
         {loading ? (
           <ActivityIndicator color={colors.fg} style={{ marginTop: 8 }} />
@@ -124,7 +137,7 @@ export default function SearchScreen() {
         keyExtractor={(it) => it.uid}
         contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 40 }}
         ListEmptyComponent={
-          q.length >= 2 && !loading ? (
+          q.length >= 1 && !loading ? (
             <Text style={[bodyMuted, { textAlign: 'center' }]}>Nessun utente</Text>
           ) : null
         }
@@ -141,6 +154,9 @@ export default function SearchScreen() {
           >
             <View style={{ flex: 1 }}>
               <Text style={titleSm}>@{item.username}</Text>
+              {!!item.displayName ? (
+                <Text style={bodyMuted}>{item.displayName}</Text>
+              ) : null}
             </View>
             {item.uid === me?.uid ? (
               <Text style={bodyMuted}>Tu</Text>

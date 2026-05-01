@@ -31,8 +31,10 @@ import { IconButton } from '../src/components/IconButton';
 const ANDROID_PACKAGE = 'app.istant';
 // TODO: replace with real App Store numeric id (e.g. "1234567890") once published.
 const IOS_APP_STORE_ID: string | undefined = undefined;
-// TODO: replace with your real Instagram profile
-const FOLLOW_IG_URL = 'https://instagram.com/istant';
+const FOLLOW_IG_URL = 'https://instagram.com/istant.app';
+const PRIVACY_URL = 'https://istantapp.it/privacypolicy';
+const TERMS_URL = 'https://istantapp.it/termini-condizioni';
+const COMMUNITY_URL = 'https://istantapp.it/standard-community';
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
@@ -203,6 +205,19 @@ export default function Settings() {
     }
   }
 
+  async function openExternal(url: string) {
+    try {
+      const can = await Linking.canOpenURL(url);
+      if (!can) {
+        Alert.alert('Link', 'Impossibile aprire il link');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Link', 'Impossibile aprire il link');
+    }
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <TopBar
@@ -341,26 +356,26 @@ export default function Settings() {
           <SettingsRow
             icon="logo-instagram"
             title="Seguici su Instagram"
-            subtitle="@istant"
+            subtitle="@istant.app"
             onPress={followInstagram}
           />
           <Divider />
           <SettingsRow
             icon="lock-closed-outline"
             title="Privacy Policy"
-            onPress={() => router.push('/legal/privacy' as any)}
+            onPress={() => void openExternal(PRIVACY_URL)}
           />
           <Divider />
           <SettingsRow
             icon="document-text-outline"
             title="Termini e condizioni"
-            onPress={() => router.push('/legal/terms' as any)}
+            onPress={() => void openExternal(TERMS_URL)}
           />
           <Divider />
           <SettingsRow
             icon="shield-checkmark-outline"
             title="Standard della community"
-            onPress={() => router.push('/legal/community' as any)}
+            onPress={() => void openExternal(COMMUNITY_URL)}
           />
           <Divider />
           <SettingsRow

@@ -7,10 +7,12 @@ import { signInWithApple, signInWithGoogle, configureGoogleSignIn } from '../../
 import { auth, firebaseConfigured } from '../../src/lib/firebase';
 import { spacing } from '../../src/theme/spacing';
 import { body } from '../../src/theme/typography';
+import { useOnboardingStore } from '../../src/store/onboardingStore';
 
 export default function Welcome() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const resetOnboardingDraft = useOnboardingStore((s) => s.reset);
 
   async function onGoogle() {
     if (!auth || !firebaseConfigured) {
@@ -21,6 +23,7 @@ export default function Welcome() {
     try {
       configureGoogleSignIn();
       await signInWithGoogle();
+      resetOnboardingDraft();
       router.replace('/');
     } catch (e) {
       Alert.alert('Accesso', e instanceof Error ? e.message : 'Errore');
@@ -40,6 +43,7 @@ export default function Welcome() {
     setLoading(true);
     try {
       await signInWithApple();
+      resetOnboardingDraft();
       router.replace('/');
     } catch (e) {
       Alert.alert('Accesso', e instanceof Error ? e.message : 'Errore');
@@ -56,6 +60,7 @@ export default function Welcome() {
     setLoading(true);
     try {
       await signInAnonymously(auth);
+      resetOnboardingDraft();
       router.replace('/');
     } catch (e) {
       Alert.alert('Accesso', e instanceof Error ? e.message : 'Errore');

@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "export:web": "sh -c 'rm -rf dist && npx expo export --platform web && mkdir -p dist/.well-known dist/well-known dist/invite && cp -R public/invite/. dist/invite/ && cp public/.well-known/apple-app-site-association dist/.well-known/apple-app-site-association && cp public/.well-known/assetlinks.json dist/.well-known/assetlinks.json && cp public/well-known/apple-app-site-association dist/well-known/apple-app-site-association && cp public/well-known/assetlinks.json dist/well-known/assetlinks.json'"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

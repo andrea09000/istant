@@ -4,9 +4,10 @@ import {
   type CameraType,
 } from 'expo-camera';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
@@ -24,7 +25,7 @@ import { body, title, titleSm } from '../../src/theme/typography';
 
 export default function CameraTab() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
   const ref = useRef<CameraView | null>(null);
   const [perm, request] = useCameraPermissions();
@@ -34,9 +35,36 @@ export default function CameraTab() {
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [audience, setAudience] = useState<PostAudience>('all');
+  const [adLink, setAdLink] = useState('');
   const tabBarSpace = 96; // keep controls above floating tab bar
   const [lenses, setLenses] = useState<string[]>([]);
   const [selectedLens, setSelectedLens] = useState<string | undefined>(undefined);
+  const isAdvertiser = Boolean(profile?.isAdvertiser);
+
+  const pickFromLibrary = useCallback(async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Galleria', 'Consenti l’accesso alla galleria per caricare una foto.');
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+      if (res.canceled) {
+        return;
+      }
+      const uri = res.assets?.[0]?.uri;
+      if (uri) {
+        setPreview(uri);
+      }
+    } catch (e) {
+      Alert.alert('Galleria', e instanceof Error ? e.message : 'Errore');
+    }
+  }, []);
 
   const flip = useCallback(() => {
     setFacing((f) => (f === 'back' ? 'front' : 'back'));
@@ -148,8 +176,19 @@ export default function CameraTab() {
       try {
         const path = `posts/${user.uid}/${Date.now()}.webp`;
         const url = await uploadImage(path, preview);
-        await createPost(user.uid, { photoUrl: url, audience: audienceToShare });
+        const raw = adLink.trim();
+        const link =
+          isAdvertiser && raw.length > 0
+            ? (raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`)
+            : undefined;
+        await createPost(user.uid, {
+          photoUrl: url,
+          audience: audienceToShare,
+          ...(isAdvertiser ? { isAd: true } : {}),
+          ...(link ? { link } : {}),
+        });
         setPreview(null);
+        setAdLink('');
         router.replace('/(tabs)/' as any);
       } catch (e) {
         Alert.alert('Pubblica', e instanceof Error ? e.message : 'Errore');
@@ -157,7 +196,7 @@ export default function CameraTab() {
         setSaving(false);
       }
     },
-    [user?.uid, preview, router],
+    [user?.uid, preview, router, adLink, isAdvertiser],
   );
 
   if (!perm?.granted) {
@@ -203,6 +242,43 @@ export default function CameraTab() {
             { paddingBottom: Math.max(insets.bottom, 14) + tabBarSpace },
           ]}
         >
+          {isAdvertiser ? (
+            <View
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                borderColor: 'rgba(255,255,255,0.10)',
+                borderWidth: 1,
+                borderRadius: 18,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+              }}
+            >
+              <Text style={{ ...titleSm, fontSize: 13, marginBottom: 6 }}>
+                Link inserzione (opzionale)
+              </Text>
+              <TextInput
+                value={adLink}
+                onChangeText={setAdLink}
+                placeholder="es. https://tuosito.com"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                textContentType="URL"
+                editable={!saving}
+                style={{
+                  color: colors.fg,
+                  fontSize: 14,
+                  fontWeight: '700',
+                  paddingVertical: 8,
+                }}
+              />
+              <Text style={{ ...body, fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+                Questo ISTANT verrà mostrato come “inserzione” e senza reazioni emoji.
+              </Text>
+            </View>
+          ) : null}
+
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
             <Pressable
               onPress={() => setAudience((a) => (a === 'all' ? 'close' : 'all'))}
@@ -310,9 +386,16 @@ export default function CameraTab() {
             <View style={styles.shutterInner} />
           </Pressable>
 
-          <Pressable onPress={flipSafe} style={styles.controlIconBtn} hitSlop={10}>
-            <Ionicons name="camera-reverse-outline" size={22} color="rgba(255,255,255,0.9)" />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {isAdvertiser ? (
+              <Pressable onPress={pickFromLibrary} style={styles.controlIconBtn} hitSlop={10}>
+                <Ionicons name="image-outline" size={22} color="rgba(255,255,255,0.9)" />
+              </Pressable>
+            ) : null}
+            <Pressable onPress={flipSafe} style={styles.controlIconBtn} hitSlop={10}>
+              <Ionicons name="camera-reverse-outline" size={22} color="rgba(255,255,255,0.9)" />
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>

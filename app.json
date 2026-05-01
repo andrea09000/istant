@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,7 +20,8 @@
       "usesAppleSignIn": true,
       "appleTeamId": "PX49GHL64Y",
       "associatedDomains": [
-        "applinks:istantapp.it"
+        "applinks:istantapp.it",
+        "applinks:get.istantapp.it"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -29,7 +30,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "package": "app.istant",
       "edgeToEdgeEnabled": true,
@@ -41,6 +42,11 @@
             {
               "scheme": "https",
               "host": "istantapp.it",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "get.istantapp.it",
               "pathPrefix": "/invite"
             }
           ],

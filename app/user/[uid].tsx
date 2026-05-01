@@ -76,12 +76,12 @@ export default function UserProfileScreen() {
     if (!uid) {
       return;
     }
-    if (!me?.uid || me.uid === uid || st !== 'accepted') {
+    if (!me?.uid || me.uid === uid || (st !== 'accepted' && !p?.isAdvertiser)) {
       setTheirPosts([]);
       return;
     }
     return subscribeUserPosts(uid, setTheirPosts);
-  }, [me?.uid, uid, st]);
+  }, [me?.uid, uid, st, p?.isAdvertiser]);
 
   if (p === undefined) {
     return (
@@ -115,12 +115,16 @@ export default function UserProfileScreen() {
   }
 
   const isSelf = me?.uid === uid;
-  const canSee = isSelf || st === 'accepted';
+  const isPublicAdvertiser = Boolean(p.isAdvertiser);
+  const canSee = isSelf || isPublicAdvertiser || st === 'accepted';
 
   const viewerUid = me?.uid ?? '';
   const visibleTheirPosts = theirPosts
     .filter((post) => post.profileVisibility !== 'archived')
     .filter((post) => {
+      if (isPublicAdvertiser) {
+        return true;
+      }
       const aud = (post as any).audienceUids as string[] | undefined;
       return Array.isArray(aud) && aud.includes(viewerUid);
     });
@@ -188,7 +192,7 @@ export default function UserProfileScreen() {
 
   const bio = p.bio?.trim();
 
-  if (me && !isSelf && st === null) {
+  if (me && !isSelf && !isPublicAdvertiser && st === null) {
     return (
       <View
         style={{
@@ -294,7 +298,7 @@ export default function UserProfileScreen() {
           paddingTop: insets.top,
         }}
       >
-        <Header back title={p.displayName} />
+        <Header back title={isPublicAdvertiser ? 'Spottly' : p.displayName} />
         <Modal
           visible={viewerIndex !== null}
           animationType="slide"
@@ -449,33 +453,37 @@ export default function UserProfileScreen() {
 
           <View style={{ flex: 1 }}>
             <Text style={[titleSm, { marginBottom: spacing.md }]}>ISTANT</Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-              }}
-            >
-              {visibleTheirPosts.map((m) => (
-                <Pressable
-                  key={m.id}
-                  onPress={() => setViewerIndex(visibleTheirPosts.findIndex((x) => x.id === m.id))}
-                  style={({ pressed }) => ({
-                    width: cell,
-                    height: cell,
-                    margin: 0.5,
-                    backgroundColor: colors.surface,
-                    opacity: pressed ? 0.88 : 1,
-                  })}
-                >
-                  <Image source={{ uri: m.photoUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                </Pressable>
-              ))}
-              {visibleTheirPosts.length === 0 && (
-                <Text style={[bodyMuted, { textAlign: 'center', width: '100%' }]}>
-                  Nessun ISTANT visibile sul profilo.
-                </Text>
-              )}
-            </View>
+            {visibleTheirPosts.length === 0 ? (
+              <Text style={[bodyMuted, { textAlign: 'center', width: '100%' }]}>
+                Nessun ISTANT visibile sul profilo.
+              </Text>
+            ) : (
+              <FlatList
+                data={visibleTheirPosts}
+                keyExtractor={(it) => it.id}
+                numColumns={3}
+                scrollEnabled={false}
+                columnWrapperStyle={{ gap: 1 }}
+                contentContainerStyle={{ gap: 1 }}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => setViewerIndex(visibleTheirPosts.findIndex((x) => x.id === item.id))}
+                    style={({ pressed }) => ({
+                      width: cell,
+                      height: cell,
+                      backgroundColor: colors.surface,
+                      opacity: pressed ? 0.88 : 1,
+                    })}
+                  >
+                    <Image
+                      source={{ uri: item.photoUrl }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                    />
+                  </Pressable>
+                )}
+              />
+            )}
           </View>
         </View>
       </View>
@@ -490,7 +498,7 @@ export default function UserProfileScreen() {
         paddingTop: insets.top,
       }}
     >
-      <Header back title={p.displayName} />
+      <Header back title={isPublicAdvertiser ? 'Spottly' : p.displayName} />
       <View
         style={{
           padding: spacing.lg,

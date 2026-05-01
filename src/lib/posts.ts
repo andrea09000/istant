@@ -68,7 +68,7 @@ export async function getCloseFriendUids(authorUid: string): Promise<string[]> {
 
 export async function createPost(
   authorUid: string,
-  data: { photoUrl: string; audience: PostAudience },
+  data: { photoUrl: string; audience: PostAudience; link?: string; isAd?: boolean },
 ) {
   const close = data.audience === 'close' ? await getCloseFriendUids(authorUid) : [];
   const allFriends =
@@ -89,6 +89,8 @@ export async function createPost(
   const docRef = await addDoc(collection(firestore, POSTS), {
     authorUid,
     photoUrl: data.photoUrl,
+    ...(data.link ? { link: data.link } : {}),
+    ...(data.isAd ? { isAd: true } : {}),
     audience: data.audience,
     audienceUids,
     createdAt,
@@ -146,6 +148,32 @@ export function subscribeAllPosts(
     },
     (e) => {
       console.error('all posts', e);
+      onData([]);
+    },
+  );
+}
+
+export function subscribeAds(
+  onData: (posts: (PostDoc & { id: string })[]) => void,
+  pageSize: number = 50,
+): Unsubscribe {
+  const firestore = assertDb();
+  return onSnapshot(
+    query(
+      collection(firestore, POSTS),
+      where('isAd', '==', true),
+      limit(pageSize),
+    ),
+    (sn) => {
+      const now = new Date().toISOString();
+      const items = sn.docs
+        .map((d) => ({ id: d.id, ...(d.data() as PostDoc) }))
+        .filter((p) => getEffectiveExpiresAt(p as PostDoc & { createdAt?: string }) > now);
+      items.sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
+      onData(items);
+    },
+    (e) => {
+      console.error('ads', e);
       onData([]);
     },
   );

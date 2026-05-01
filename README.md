@@ -56,13 +56,16 @@ eas build --profile development --platform all
 ## Note
 
 - Link invito “cliccabile” (WhatsApp/IG/iMessage) richiede un dominio HTTPS con **Universal Links** (iOS) + **App Links** (Android).
-  - Imposta `EXPO_PUBLIC_APP_ORIGIN=https://istantapp.it` nel `.env` per generare link HTTPS.
-  - Pubblica sul tuo dominio questi file (status 200, no redirect):
-    - `https://istantapp.it/.well-known/apple-app-site-association`
-    - `https://istantapp.it/.well-known/assetlinks.json`
-  - Se usi **Netlify**: nel repo ci sono già `public/.well-known/*` + `netlify.toml` (publish = `public`). Dopo il deploy verifica che gli URL sopra rispondano 200.
+  - Imposta `EXPO_PUBLIC_APP_ORIGIN=https://get.istantapp.it` nel `.env` per generare link HTTPS sugli inviti.
+  - Pubblica sul dominio inviti questi file (status 200, no redirect):
+    - `https://get.istantapp.it/.well-known/apple-app-site-association`
+    - `https://get.istantapp.it/.well-known/assetlinks.json`
+  - Se usi **Netlify** (consigliato: **due siti**):
+    - **Sito inviti** (`get.istantapp.it`): in Netlify imposta *Base directory* vuota e **“Netlify configuration file”** = `netlify.invite.toml` (publish = `public`, no build).
+    - **Sito principale** (`istantapp.it`): usa `netlify.toml` (build `npm run export:web`, publish `dist`).
+    Dopo il deploy verifica che gli URL sopra rispondano 200.
   - Android: in `public/.well-known/assetlinks.json` sostituisci `REPLACE_WITH_YOUR_SHA256_CERT_FINGERPRINT` con la SHA-256 del certificato (debug/release) usato per firmare l’app installata.
-  - In `app.json` aggiorna `ios.associatedDomains` e `android.intentFilters` se il dominio non è `istantapp.it`.
+  - In `app.json` aggiorna `ios.associatedDomains` e `android.intentFilters` se cambi host dominio inviti.
 
 - In **Firebase 12** il sample di persistenza Auth con `getReactNativePersistence` non è usato: la sessione può dipendere dal default di `getAuth` sul device; in produzione valuta una strategia di persistenza ufficiale per RN/Expo.
 - I permessi **notifiche** richiedono progetto con push configurato (EAS) per un token reale; l’onboarding chiede comunque il consenso.

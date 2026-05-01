@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export type UserProfile = {
   _usernameKey?: string;
+  _displayNameKey?: string;
   username: string;
   displayName: string;
   birthYear: number;
@@ -10,6 +11,8 @@ export type UserProfile = {
   instagram?: string;
   tiktok?: string;
   snapchat?: string;
+  /** Special profile: posts are treated as ads (Inserzione). */
+  isAdvertiser?: boolean;
   createdAt?: Timestamp;
   fcmToken?: string;
   /** First-run onboarding: after profile, permissions screens */
@@ -24,6 +27,10 @@ export type PostProfileVisibility = 'profile' | 'archived';
 export type PostDoc = {
   authorUid: string;
   photoUrl: string;
+  /** Optional outbound link (used for Inserzione posts). */
+  link?: string;
+  /** Ad post: shows as "Inserzione" and disables emoji reactions. */
+  isAd?: boolean;
   audience: PostAudience;
   audienceUids: string[];
   createdAt: Timestamp | string;

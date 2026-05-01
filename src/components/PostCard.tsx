@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
 
 import { getUser } from '../lib/users';
 import {
@@ -32,6 +32,7 @@ export function PostCard({ post, myUid, onUserPress }: Props) {
   const [saving, setSaving] = useState(false);
   const [counts, setCounts] = useState<Partial<Record<EmojiReaction, number>>>({});
   const [reporting, setReporting] = useState(false);
+  const isAd = Boolean(post.isAd) || Boolean(author?.isAdvertiser);
 
   useEffect(() => {
     if (!myUid) {
@@ -53,6 +54,9 @@ export function PostCard({ post, myUid, onUserPress }: Props) {
 
   const onReact = useCallback(
     async (e: EmojiReaction) => {
+      if (isAd) {
+        return;
+      }
       if (saving) {
         return;
       }
@@ -63,17 +67,25 @@ export function PostCard({ post, myUid, onUserPress }: Props) {
         setSaving(false);
       }
     },
-    [post.id, myUid, saving],
+    [post.id, myUid, saving, isAd],
   );
 
   useEffect(() => {
     if (!myUid) {
       return;
     }
+    if (isAd) {
+      setMine(null);
+      return;
+    }
     return subscribeMyReaction(post.id, myUid, (em) => setMine(em));
-  }, [post.id, myUid]);
+  }, [post.id, myUid, isAd]);
 
   useEffect(() => {
+    if (isAd) {
+      setCounts({});
+      return;
+    }
     return subscribeReactions(post.id, (m) => {
       const c: Partial<Record<EmojiReaction, number>> = {};
       for (const e of EMOJIS) {
@@ -84,7 +96,24 @@ export function PostCard({ post, myUid, onUserPress }: Props) {
       }
       setCounts(c);
     });
-  }, [post.id]);
+  }, [post.id, isAd]);
+
+  const onOpenLink = useCallback(async () => {
+    const url = post.link?.trim();
+    if (!url) {
+      return;
+    }
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (!ok) {
+        Alert.alert('Link', 'Link non valido.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Link', 'Impossibile aprire il link.');
+    }
+  }, [post.link]);
 
   function onReport() {
     if (reporting || !myUid) {
@@ -194,7 +223,9 @@ export function PostCard({ post, myUid, onUserPress }: Props) {
       </View>
       {post.photoUrl ? (
         <View style={{ paddingHorizontal: spacing.md }}>
-          <View
+          <Pressable
+            onPress={post.link ? onOpenLink : undefined}
+            disabled={!post.link}
             style={{
               aspectRatio: 1,
               backgroundColor: '#F2F2F2',
@@ -210,7 +241,28 @@ export function PostCard({ post, myUid, onUserPress }: Props) {
               style={{ width: '100%', height: '100%' }}
               contentFit="cover"
             />
-          </View>
+            {post.link ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  bottom: 10,
+                  backgroundColor: 'rgba(0,0,0,0.55)',
+                  borderRadius: 999,
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="link-outline" size={16} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '900' }}>
+                  Apri link
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
       ) : null}
       <View
@@ -226,14 +278,20 @@ export function PostCard({ post, myUid, onUserPress }: Props) {
             style={{ marginBottom: spacing.xs }}
           />
         ) : null}
-        <EmojiBar
-          tone="light"
-          selected={mine}
-          onSelect={onReact}
-          counts={counts}
-          showCounts={false}
-          disabled={saving}
-        />
+        {!isAd ? (
+          <EmojiBar
+            tone="light"
+            selected={mine}
+            onSelect={onReact}
+            counts={counts}
+            showCounts={false}
+            disabled={saving}
+          />
+        ) : (
+          <Text style={[caption, { color: 'rgba(0,0,0,0.55)', fontWeight: '800' }]}>
+            Contenuto sponsorizzato
+          </Text>
+        )}
       </View>
     </View>
   );
