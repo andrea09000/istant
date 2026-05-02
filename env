@@ -1,0 +1,14 @@
+EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyD9mm8nM3_LVfkzE0FW_egczHqt7U42Wdw
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=jonny-4d656.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=jonny-4d656
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=jonny-4d656.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=560081968430
+EXPO_PUBLIC_FIREBASE_APP_ID=1:560081968430:web:324b287da0cee3afd8eebf
+
+# Google Sign-In (required for the app's Google login)
+# Put your Web Client ID here (Google Cloud Console / Firebase Auth config)
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=560081968430-o9u0ga447d1j84j17i1du4jau3ibckag.apps.googleusercontent.com
+
+# Optional: EAS project id for push token
+EXPO_PUBLIC_EAS_PROJECT_ID=
+EXPO_PUBLIC_APP_ORIGIN=https://get.istantapp.it
